@@ -5,6 +5,10 @@
   "description": "Convert images to PNG & remove or swap backgrounds right from VS Code.",
   "version": "0.4.0",
   "publisher": "michalzaperty",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikeisfree/imager-VScodeExtension.git"
+  },
   "galleryBanner.color": {
     "color": "#0C0C11",
     "theme": "dark"
