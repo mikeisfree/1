@@ -1,6 +1,7 @@
 {
   "name": "imager",
   "displayName": "imager",
+  "icon": "media/icon.png",
   "description": "Convert images to PNG and remove backgrounds right from VS Code.",
   "version": "0.0.1",
   "publisher": "MikeIsFree",

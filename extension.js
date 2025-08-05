@@ -92,33 +92,87 @@ function activate(context) {
           }
         }
         const targets = await resolveTargetUris(uri, uris, {
-          title: 'Select image(s) to remove background',
+          title: 'Select an image to remove background',
           filters: { Images: ['png', 'jpg', 'jpeg', 'webp'] },
         });
         if (!targets.length) return;
+        if (targets.length > 1) {
+          const pick = await vscode.window.showQuickPick(
+            targets.map(u => ({ label: path.basename(u.fsPath), u })),
+            { placeHolder: 'Select one image to edit' }
+          );
+          if (!pick) return;
+          uri = pick.u;
+        } else {
+          uri = targets[0];
+        }
 
         const suffix = cfg.get('removeBg.outputSuffix', '-no-bg');
         const proxy = (cfg.get('network.proxy', '') || '').trim();
         const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
 
+        const panel = vscode.window.createWebviewPanel(
+          'imagerEditor',
+          `imager: Remove Background ${path.basename(uri.fsPath)}`,
+          vscode.ViewColumn.Active,
+          {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+            localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+          }
+        );
+
+        const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'media');
+        const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'editor.js'));
+        const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'editor.css'));
+        panel.webview.html = getEditorHtml(panel.webview, styleUri, scriptUri);
+
+        // Load original and initial cutout via remove.bg
+        const originalBuf = await fs.promises.readFile(uri.fsPath);
+        const cutoutPath = path.join(require('os').tmpdir(), `imager-cutout-${Date.now()}.png`);
         await vscode.window.withProgress(
           { location: vscode.ProgressLocation.Notification, title: 'Removing background via remove.bg...', cancellable: false },
           async () => {
-            let success = 0;
-            let failed = 0;
-            for (const t of targets) {
-              try {
-                const outPath = await getOutputPathPng(t.fsPath, false, suffix);
-                await removeBackgroundFile(t.fsPath, outPath, apiKey, agent);
-                success++;
-              } catch (e) {
-                failed++;
-                console.error('Remove background failed for', t.fsPath, e);
-              }
-            }
-            vscode.window.showInformationMessage(`Background removed for ${success} file(s)` + (failed ? `, ${failed} failed` : ''));
+            await removeBackgroundFile(uri.fsPath, cutoutPath, apiKey, agent);
           }
         );
+        const cutoutBuf = await fs.promises.readFile(cutoutPath);
+
+        const initPayload = {
+          type: 'init',
+          filename: path.basename(uri.fsPath),
+          original: `data:image/${path.extname(uri.fsPath).replace('.', '')};base64,${originalBuf.toString('base64')}`,
+          cutout: `data:image/png;base64,${cutoutBuf.toString('base64')}`
+        };
+        // try immediate post, and also handle 'ready' to resend
+        panel.webview.postMessage(initPayload);
+
+        panel.webview.onDidReceiveMessage(async (msg) => {
+          if (msg?.type === 'acceptPngDataUrl') {
+            try {
+              const outPath = await getOutputPathPng(uri.fsPath, false, suffix);
+              const base64 = msg.dataUrl.split(',')[1];
+              await fs.promises.writeFile(outPath, Buffer.from(base64, 'base64'));
+              vscode.window.showInformationMessage(`Saved ${path.basename(outPath)}`);
+              // cleanup temp cutout
+              fs.promises.unlink(cutoutPath).catch(() => {});
+              panel.dispose();
+            } catch (e) {
+              handleError('Save failed', e);
+            }
+          } else if (msg?.type === 'cancelEdit') {
+            // cleanup temp cutout
+            fs.promises.unlink(cutoutPath).catch(() => {});
+            panel.dispose();
+          } else if (msg?.type === 'ready') {
+            panel.webview.postMessage(initPayload);
+          }
+        }, undefined, context.subscriptions);
+
+        panel.onDidDispose(() => {
+          // ensure cleanup if not already deleted
+          fs.promises.unlink(cutoutPath).catch(() => {});
+        }, null, context.subscriptions);
       } catch (err) {
         handleError('Background removal failed', err);
       }
@@ -141,7 +195,83 @@ function activate(context) {
     }
   });
 
-  context.subscriptions.push(convertCmd, removeBgCmd, setKeyCmd);
+  const editCmd = vscode.commands.registerCommand('imageTools.editBackground', async (uri) => {
+    try {
+      const cfg = vscode.workspace.getConfiguration('imageTools');
+      let apiKey = cfg.get('removeBgApiKey', '').trim();
+      if (!uri) {
+        const picks = await vscode.window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectMany: false,
+          filters: { Images: ['png', 'jpg', 'jpeg', 'webp'] },
+          title: 'Select an image to edit background'
+        });
+        if (!picks || !picks.length) return;
+        uri = picks[0];
+      }
+      if (!apiKey) {
+        const choice = await vscode.window.showErrorMessage(
+          'imager: remove.bg API key not set.', 'Enter API Key...', 'Open Settings'
+        );
+        if (choice === 'Enter API Key...') {
+          const input = await vscode.window.showInputBox({ prompt: 'Enter remove.bg API key', password: true, ignoreFocusOut: true });
+          if (!input) return; apiKey = input.trim();
+          await vscode.workspace.getConfiguration().update('imageTools.removeBgApiKey', apiKey, vscode.ConfigurationTarget.Global);
+        } else if (choice === 'Open Settings') {
+          await vscode.commands.executeCommand('workbench.action.openSettings', 'imageTools.removeBgApiKey');
+          return;
+        } else { return; }
+      }
+
+      const panel = vscode.window.createWebviewPanel(
+        'imagerEditor',
+        `imager: Edit ${path.basename(uri.fsPath)}`,
+        vscode.ViewColumn.Active,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true,
+          localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+        }
+      );
+
+      const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'media');
+      const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'editor.js'));
+      const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'editor.css'));
+      panel.webview.html = getEditorHtml(panel.webview, styleUri, scriptUri);
+
+      // Load original and initial cutout via remove.bg
+      const originalBuf = await fs.promises.readFile(uri.fsPath);
+      const cutoutPath = path.join(require('os').tmpdir(), `imager-cutout-${Date.now()}.png`);
+      await removeBackgroundFile(uri.fsPath, cutoutPath, apiKey, undefined);
+      const cutoutBuf = await fs.promises.readFile(cutoutPath);
+
+      const postInit = () => panel.webview.postMessage({
+        type: 'init',
+        filename: path.basename(uri.fsPath),
+        original: `data:image/${path.extname(uri.fsPath).replace('.', '')};base64,${originalBuf.toString('base64')}`,
+        cutout: `data:image/png;base64,${cutoutBuf.toString('base64')}`
+      });
+      postInit();
+
+      panel.webview.onDidReceiveMessage(async (msg) => {
+        if (msg?.type === 'savePngDataUrl') {
+          const suggested = `${path.basename(uri.fsPath, path.extname(uri.fsPath))}-edited.png`;
+          const target = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(path.join(path.dirname(uri.fsPath), suggested)),
+            filters: { Images: ['png'] }
+          });
+          if (!target) return;
+          const base64 = msg.dataUrl.split(',')[1];
+          await fs.promises.writeFile(target.fsPath, Buffer.from(base64, 'base64'));
+          vscode.window.showInformationMessage(`Saved ${path.basename(target.fsPath)}`);
+        }
+      }, undefined, context.subscriptions);
+    } catch (err) {
+      handleError('Open editor failed', err);
+    }
+  });
+
+  context.subscriptions.push(convertCmd, removeBgCmd, setKeyCmd, editCmd);
 }
 
 function deactivate() {}
@@ -232,3 +362,37 @@ module.exports = {
   activate,
   deactivate
 };
+
+function getEditorHtml(webview, styleUri, scriptUri) {
+  const csp = `default-src 'none'; img-src ${webview.cspSource} blob: data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};`; 
+  return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="${csp}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="${styleUri}" rel="stylesheet" />
+    <title>imager editor</title>
+  </head>
+  <body>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button id="mode-erase" class="btn">Erase</button>
+        <button id="mode-restore" class="btn">Restore</button>
+        <label class="label-inline">Brush <input id="brush" type="range" min="3" max="200" value="40" /></label>
+      </div>
+      <div class="toolbar-center">
+        <label for="bgfile" class="btn" id="add-bg-btn">add new bg.</label>
+        <button id="remove-bg" class="btn" title="Remove background image">✕</button>
+        <input id="bgfile" type="file" accept="image/*" hidden />
+      </div>
+      <div class="toolbar-right">
+        <button id="accept" class="btn primary">Accept</button>
+        <button id="cancel" class="btn">Cancel</button>
+      </div>
+    </div>
+    <div class="stage-wrap"><canvas id="stage"></canvas></div>
+    <script src="${scriptUri}"></script>
+  </body>
+  </html>`;
+}
