@@ -1,0 +1,23 @@
+# Exclude development and unused content from VSIX
+.env
+.git/**
+.github/**
+.vscode/**
+node_modules/**
+scripts/**
+test/**
+tests/**
+coverage/**
+**/*.map
+**/*.ts
+*.log
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+package-lock.json
+extension.js
+.gitignore
+
+# IDE/caches
+.DS_Store
+Thumbs.db

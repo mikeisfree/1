@@ -1,10 +1,10 @@
 // Image Tools VS Code Extension
-// Provides: Convert to PNG (Sharp) and Remove Background (remove.bg)
+// Provides: Convert to PNG (Jimp) and Remove Background (remove.bg)
 
+import Jimp from 'jimp';
 const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
-const sharp = require('sharp');
 const fetch = require('node-fetch');
 const FormData = require('form-data');
 const { HttpsProxyAgent } = require('https-proxy-agent');
@@ -21,9 +21,11 @@ function activate(context) {
      */
     async (uri, uris) => {
       try {
-        const targets = await resolveTargetUris(uri, uris, {
+        let targets = await resolveTargetUris(uri, uris, {
           title: 'Select image(s) to convert to PNG',
         });
+        // Limit to formats supported by our Jimp-based conversion
+        targets = targets.filter(u => /\.(png|jpg|jpeg|bmp)$/i.test(u.fsPath));
         if (!targets.length) return;
 
         const cfg = vscode.workspace.getConfiguration('imageTools');
@@ -37,7 +39,8 @@ function activate(context) {
             for (const t of targets) {
               try {
                 const outPath = await getOutputPathPng(t.fsPath, overwrite, '-converted');
-                await sharp(t.fsPath).png().toFile(outPath);
+                const img = await Jimp.read(t.fsPath);
+                await img.writeAsync(outPath);
               success++;
               } catch (e) {
                 failed++;

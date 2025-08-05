@@ -3,7 +3,7 @@
   "displayName": "imager",
   "icon": "media/icon.png",
   "description": "Convert images to PNG & remove or swap backgrounds right from VS Code.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "michalzaperty",
   "repository": {
     "type": "git",
@@ -24,7 +24,12 @@
   "categories": [
     "Other"
   ],
-  "main": "./extension.js",
+  "main": "./dist/extension.js",
+  "scripts": {
+    "build": "esbuild extension.js --bundle --platform=node --external:vscode --outfile=dist/extension.js --minify",
+    "watch": "npm run build -- --watch",
+    "prepare": "npm run build"
+  },
   "contributes": {
     "submenus": [
       {
@@ -51,14 +56,14 @@
         {
           "submenu": "imager.explorer",
           "group": "navigation@10",
-          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|webp|gif|tif|tiff|bmp)$/i"
+          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|bmp)$/i"
         }
       ],
       "imager.explorer": [
         {
           "command": "imageTools.convertToPng",
           "group": "1_convert",
-          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|webp|gif|tif|tiff|bmp)$/i"
+          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|bmp)$/i"
         },
         {
           "command": "imageTools.removeBackground",
@@ -98,10 +103,12 @@
       }
     }
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "jimp": "^0.22.10",
     "form-data": "^4.0.0",
     "https-proxy-agent": "^7.0.2",
-    "node-fetch": "^2.6.9",
-    "sharp": "^0.32.6"
+    "node-fetch": "^2.6.9"
   }
 }

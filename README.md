@@ -1,13 +1,13 @@
 # imager
 
 VS Code extension to:
-- Convert images (jpg/jpeg/webp/gif/tiff/bmp/png) to PNG using Sharp
+- Convert images (jpg/jpeg/png/bmp) to PNG using Jimp
 - Remove backgrounds from images via remove.bg API (requires free remove.bg API key)
  - Refine background removal (erase/restore brush) and/or add custom background image
 
 ## Requirements
-- Node.js (for installing dependencies)
-- Internet connection (for remove.bg API and first-time dependency install)
+- For users: Internet connection (for remove.bg API). No local dependency install is required.
+- For contributors: Node.js (to build the extension locally).
 - remove.bg API key for background removal (free tier available): https://www.remove.bg/api
 
 ## Setup
@@ -38,9 +38,9 @@ Converted and background-removed images are written next to the original file. T
 - `imageTools.network.proxy` (string): Optional HTTP proxy like `http://user:pass@host:port` used for remove.bg requests.
 
 ## Notes
-- Conversion uses [Sharp](https://sharp.pixelplumbing.com/), supporting common formats including WebP, TIFF, GIF, BMP, JPEG.
-- Background removal uses the official remove.bg REST API and returns a PNG with transparent background.
-- If Sharp fails to install on your platform, ensure you have a supported Node.js version. Most platforms use prebuilt binaries; otherwise build tools may be required.
+- Conversion uses [Jimp](https://github.com/jimp-dev/jimp), supporting JPEG/PNG/BMP inputs.
+- WebP, TIFF and GIF are not currently supported for the Convert to PNG command.
+- Background removal uses the official remove.bg REST API and returns a PNG with transparent background (WebP input is supported here).
 
 ## Troubleshooting
 - "API key not set": Configure `imageTools.removeBgApiKey` in VS Code Settings.
