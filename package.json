@@ -1,0 +1,98 @@
+{
+  "name": "imager",
+  "displayName": "imager",
+  "description": "Convert images to PNG and remove backgrounds right from VS Code.",
+  "version": "0.0.1",
+  "publisher": "MikeIsFree",
+  "author": {
+    "name": "MikeIsFree",
+    "url": "https://github.com/mikeisfree"
+  },
+  "homepage": "https://github.com/mikeisfree",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "submenus": [
+      {
+        "id": "imager.explorer",
+        "label": "imager"
+      }
+    ],
+    "commands": [
+      {
+        "command": "imageTools.convertToPng",
+        "title": "imager: Convert to PNG"
+      },
+      {
+        "command": "imageTools.removeBackground",
+        "title": "imager: Remove Background (remove.bg)"
+      },
+      {
+        "command": "imageTools.setRemoveBgApiKey",
+        "title": "imager: Set remove.bg API Key"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "imager.explorer",
+          "group": "navigation@10",
+          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|webp|gif|tif|tiff|bmp)$/i"
+        }
+      ],
+      "imager.explorer": [
+        {
+          "command": "imageTools.convertToPng",
+          "group": "1_convert",
+          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|webp|gif|tif|tiff|bmp)$/i"
+        },
+        {
+          "command": "imageTools.removeBackground",
+          "group": "2_removebg",
+          "when": "resourceExtname =~ /\\.(jpg|jpeg|png|webp)$/i"
+        }
+      ],
+      "commandPalette": [
+        { "command": "imageTools.convertToPng", "when": "true" },
+        { "command": "imageTools.removeBackground", "when": "true" },
+        { "command": "imageTools.setRemoveBgApiKey", "when": "true" }
+      ]
+    },
+    "configuration": {
+      "title": "imager",
+      "properties": {
+        "imageTools.removeBgApiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "API key for remove.bg. Required for background removal. Get a key at https://www.remove.bg/api"
+        },
+        "imageTools.convert.overwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Overwrite existing .png if exists. If false, '-converted' suffix is used."
+        },
+        "imageTools.removeBg.outputSuffix": {
+          "type": "string",
+          "default": "-no-bg",
+          "description": "Suffix for background-removed PNG files."
+        },
+        "imageTools.network.proxy": {
+          "type": "string",
+          "default": "",
+          "description": "Optional HTTP proxy (e.g., http://user:pass@host:port) for API requests."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "form-data": "^4.0.0",
+    "https-proxy-agent": "^7.0.2",
+    "node-fetch": "^2.6.9",
+    "sharp": "^0.32.6"
+  }
+}
