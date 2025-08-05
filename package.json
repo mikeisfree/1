@@ -2,16 +2,20 @@
   "name": "imager",
   "displayName": "imager",
   "icon": "media/icon.png",
-  "description": "Convert images to PNG and remove backgrounds right from VS Code.",
-  "version": "0.0.1",
-  "publisher": "MikeIsFree",
+  "description": "Convert images to PNG & remove or swap backgrounds right from VS Code.",
+  "version": "0.4.0",
+  "publisher": "michalzaperty",
+  "galleryBanner.color": {
+    "color": "#0C0C11",
+    "theme": "dark"
+  },
   "author": {
-    "name": "MikeIsFree",
+    "name": "Michal Zaperty",
     "url": "https://github.com/mikeisfree"
   },
   "homepage": "https://github.com/mikeisfree",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Other"

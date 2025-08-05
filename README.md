@@ -2,7 +2,7 @@
 
 VS Code extension to:
 - Convert images (jpg/jpeg/webp/gif/tiff/bmp/png) to PNG using Sharp
-- Remove backgrounds from images via remove.bg API (outputs PNG's)
+- Remove backgrounds from images via remove.bg API (requires free remove.bg API key)
  - Refine background removal (erase/restore brush) and/or add custom background image
 
 ## Requirements
@@ -11,6 +11,8 @@ VS Code extension to:
 - remove.bg API key for background removal (free tier available): https://www.remove.bg/api
 
 ## Setup
+Simply install from VS Code marketplace
+OR
 1. Install dependencies:
    ```bash
    npm install
@@ -21,12 +23,10 @@ VS Code extension to:
 - Explorer context menu:
   - Right-click an image file → imager →
     - "Convert to PNG"
-    - "Remove Background (remove.bg)"
-    - "Edit Background" (interactive editor: erase/restore with adjustable brush and optional background image)
+    - "Remove Background"
 - Command Palette:
   - "imager: Convert to PNG"
-  - "imager: Remove Background (remove.bg)"
-  - "imager: Edit Background"
+  - "imager: Remove Background"
   - If no file is selected, a file picker will appear.
 
 Converted and background-removed images are written next to the original file. The editor saves as a PNG you choose via Save dialog.
